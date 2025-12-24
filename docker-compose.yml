@@ -7,8 +7,10 @@ services:
       POSTGRES_USER: cuadrante
       POSTGRES_PASSWORD: cuadrante_password
       POSTGRES_DB: cuadrante_db
-    ports:
-      - "5432:5432"
+    # Puerto comentado - PostgreSQL solo accesible dentro de la red Docker
+    # Si necesitas acceso externo, descomenta y usa un puerto diferente:
+    # ports:
+    #   - "5433:5432"  # Puerto alternativo para evitar conflictos
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
