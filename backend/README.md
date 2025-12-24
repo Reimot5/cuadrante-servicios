@@ -39,7 +39,7 @@ PORT=3000
 NODE_ENV=development
 JWT_SECRET=tu-secreto-jwt
 JWT_EXPIRES_IN=7d
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cuadrante_dev?schema=public"
 CORS_ORIGIN=http://localhost:5173
 ```
 

@@ -1,11 +1,22 @@
 #!/bin/bash
 
-# Script de inicio rápido para Cuadrante de Servicios
+# Script de inicio rápido para Cuadrante de Servicios (Desarrollo Local)
 # Este script instala dependencias, configura la base de datos y levanta el sistema
+# 
+# NOTA: Este script requiere PostgreSQL instalado localmente.
+# Para una instalación más sencilla, usa: ./start-docker.sh
+#
+# Requisitos:
+# - Node.js 18+
+# - PostgreSQL 15+ instalado y corriendo
+# - Base de datos 'cuadrante_dev' (el script intenta crearla automáticamente)
 
 set -e
 
-echo "🚀 Iniciando Cuadrante de Servicios..."
+echo "🚀 Iniciando Cuadrante de Servicios (Desarrollo Local)..."
+echo -e "${YELLOW}⚠${NC}  NOTA: Este script requiere PostgreSQL instalado localmente."
+echo -e "${YELLOW}⚠${NC}  Para usar Docker (más sencillo): ${BLUE}./start-docker.sh${NC}"
+echo ""
 echo ""
 
 # Colores para output
@@ -46,6 +57,33 @@ if ! command_exists npm; then
 fi
 
 echo -e "${GREEN}✓${NC} npm $(npm -v) detectado"
+
+# Verificar PostgreSQL
+if ! command_exists psql; then
+    echo -e "${YELLOW}⚠${NC}  PostgreSQL no está instalado."
+    echo -e "${YELLOW}⚠${NC}  Opciones:"
+    echo -e "    1. Instalar PostgreSQL localmente"
+    echo -e "    2. Usar Docker Compose: ${BLUE}./start-docker.sh${NC}"
+    echo ""
+    read -p "¿Deseas continuar de todas formas? (s/N): " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✓${NC} PostgreSQL detectado"
+    
+    # Verificar si la base de datos existe, si no, crearla
+    if ! psql -lqt | cut -d \| -f 1 | grep -qw cuadrante_dev 2>/dev/null; then
+        echo -e "${YELLOW}⚠${NC}  Base de datos 'cuadrante_dev' no existe. Creándola..."
+        createdb cuadrante_dev 2>/dev/null || {
+            echo -e "${YELLOW}⚠${NC}  No se pudo crear la base de datos automáticamente."
+            echo -e "${YELLOW}⚠${NC}  Créala manualmente: ${BLUE}createdb cuadrante_dev${NC}"
+        }
+    else
+        echo -e "${GREEN}✓${NC} Base de datos 'cuadrante_dev' existe"
+    fi
+fi
 echo ""
 
 # Backend
@@ -62,9 +100,11 @@ PORT=3000
 NODE_ENV=development
 JWT_SECRET=desarrollo-secreto-cambiar-en-produccion
 JWT_EXPIRES_IN=7d
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cuadrante_dev?schema=public"
 CORS_ORIGIN=http://localhost:5173
 EOF
+        echo -e "${YELLOW}⚠${NC}  NOTA: El proyecto requiere PostgreSQL. Asegúrate de tener PostgreSQL instalado y corriendo."
+        echo -e "${YELLOW}⚠${NC}  Crea la base de datos: createdb cuadrante_dev"
     fi
     echo -e "${GREEN}✓${NC} Archivo .env creado"
 fi
@@ -77,14 +117,16 @@ echo ""
 echo -e "${BLUE}🗄️  Configurando base de datos...${NC}"
 npx prisma generate
 
-# Aplicar migraciones (si la base de datos ya existe, solo aplicará las pendientes)
-if [ -f "prisma/dev.db" ]; then
-    echo -e "${YELLOW}⚠${NC}  Base de datos existente detectada, aplicando migraciones pendientes..."
-    npx prisma migrate deploy || npx prisma migrate dev
-else
-    echo -e "${BLUE}📝 Creando migraciones iniciales...${NC}"
-    npx prisma migrate dev
+# Verificar que PostgreSQL esté disponible
+if ! command_exists psql; then
+    echo -e "${YELLOW}⚠${NC}  PostgreSQL no está instalado. Instálalo o usa Docker Compose."
+    echo -e "${YELLOW}⚠${NC}  Para usar Docker: ./start-docker.sh"
+    exit 1
 fi
+
+# Aplicar migraciones
+echo -e "${BLUE}📝 Aplicando migraciones...${NC}"
+npx prisma migrate deploy || npx prisma migrate dev
 echo -e "${GREEN}✓${NC} Base de datos configurada"
 echo ""
 

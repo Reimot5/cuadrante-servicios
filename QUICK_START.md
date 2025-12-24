@@ -14,7 +14,7 @@ Esta guía te ayudará a levantar el sistema en **menos de 5 minutos**.
 Este script automáticamente:
 - ✅ Verifica requisitos (Node.js 18+)
 - ✅ Instala dependencias de backend y frontend
-- ✅ Configura la base de datos SQLite
+- ✅ Configura la base de datos PostgreSQL
 - ✅ Carga 30 personas de ejemplo
 - ✅ Crea usuario admin
 
@@ -142,11 +142,10 @@ cd backend && rm -rf node_modules && npm install
 cd ../frontend && rm -rf node_modules && npm install
 ```
 
-### Base de datos corrupta
+### Resetear base de datos
 ```bash
 cd backend
-rm -f dev.db
-npx prisma migrate dev
+npx prisma migrate reset
 npm run seed
 ```
 

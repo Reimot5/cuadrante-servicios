@@ -13,8 +13,7 @@ Todos los requisitos del MVP han sido implementados exitosamente.
 - [x] Backend: Node.js + Express + TypeScript
 - [x] Autenticación JWT (login simple)
 - [x] Prisma ORM integrado
-- [x] SQLite en desarrollo local
-- [x] Preparado para PostgreSQL en producción
+- [x] PostgreSQL en todos los entornos (desarrollo y producción)
 - [x] Docker Compose configurado (backend, frontend, database)
 - [x] Variables de entorno (.env)
 - [x] README completo con instrucciones
@@ -206,7 +205,7 @@ cd frontend && npm run dev
 - Express 4
 - TypeScript 5
 - Prisma ORM 5
-- SQLite (desarrollo) / PostgreSQL (producción)
+- PostgreSQL
 - JWT para autenticación
 - bcrypt para passwords
 

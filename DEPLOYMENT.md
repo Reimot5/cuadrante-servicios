@@ -180,12 +180,12 @@ sudo systemctl start cuadrante
 
 ### Ejemplos de DATABASE_URL
 
-**SQLite (desarrollo):**
+**PostgreSQL (desarrollo local):**
 ```
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cuadrante_dev?schema=public"
 ```
 
-**PostgreSQL:**
+**PostgreSQL (producción):**
 ```
 DATABASE_URL="postgresql://usuario:password@localhost:5432/cuadrante_db?schema=public"
 ```
@@ -240,10 +240,11 @@ docker compose exec db pg_dump -U cuadrante cuadrante_db > backup_$(date +%Y%m%d
 docker compose exec -T db psql -U cuadrante cuadrante_db < backup_20241224.sql
 ```
 
-### Backup de SQLite
+### Backup de PostgreSQL (local)
 
 ```bash
-cp backend/dev.db backup/dev_$(date +%Y%m%d).db
+# Si usas PostgreSQL local (no Docker)
+pg_dump -U postgres cuadrante_dev > backup/cuadrante_dev_$(date +%Y%m%d).sql
 ```
 
 ## Troubleshooting

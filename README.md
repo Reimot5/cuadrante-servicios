@@ -26,7 +26,7 @@ Sistema completo para la gestión de cuadrantes de servicios con auto-asignació
 
 ### Backend
 - **Node.js** + **Express** + **TypeScript**
-- **Prisma ORM** (SQLite en desarrollo, PostgreSQL en producción)
+- **Prisma ORM** con **PostgreSQL**
 - **JWT** para autenticación
 - **bcrypt** para hashing de passwords
 
@@ -48,9 +48,42 @@ Sistema completo para la gestión de cuadrantes de servicios con auto-asignació
 
 - Node.js 18+ 
 - npm o yarn
-- Docker y Docker Compose (opcional, para deployment)
+- PostgreSQL 15+ (o usar Docker Compose que incluye PostgreSQL)
+- Docker y Docker Compose (recomendado para desarrollo y producción)
 
-### Instalación Local
+### Opción 1: Docker Compose (Recomendado) 🐳
+
+Esta es la forma más sencilla y recomendada para desarrollo y producción:
+
+```bash
+./start-docker.sh
+```
+
+Esto levantará:
+- PostgreSQL en puerto 5432 (solo dentro de Docker)
+- Backend en puerto 5000
+- Frontend en puerto 5005
+
+Accede a `http://localhost:5005`
+
+### Opción 2: Instalación Local (Requiere PostgreSQL)
+
+**Nota:** Esta opción requiere PostgreSQL instalado localmente. Si prefieres no instalar PostgreSQL, usa la Opción 1 (Docker Compose).
+
+#### Opción 2a: Script Automático
+
+```bash
+./start.sh
+```
+
+Este script automáticamente:
+- Verifica Node.js y PostgreSQL
+- Crea la base de datos si no existe
+- Instala dependencias
+- Configura la base de datos
+- Carga datos de ejemplo
+
+#### Opción 2b: Instalación Manual
 
 #### 1. Clonar el repositorio
 
@@ -59,33 +92,34 @@ git clone <url-del-repositorio>
 cd cuadrante-servicios
 ```
 
-#### 2. Configurar variables de entorno
+#### 2. Instalar PostgreSQL
 
-Copiar el archivo de ejemplo y configurar:
+Asegúrate de tener PostgreSQL 15+ instalado y corriendo.
+
+#### 3. Crear base de datos
 
 ```bash
-cp .env.example backend/.env
+createdb cuadrante_dev
 ```
 
-Editar `backend/.env` según tus necesidades (la configuración por defecto funciona para desarrollo local).
+#### 4. Configurar variables de entorno
 
-#### 3. Instalar dependencias del backend
+```bash
+cp backend/.env.example backend/.env
+```
+
+Editar `backend/.env` y configurar `DATABASE_URL`:
+```
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cuadrante_dev?schema=public"
+```
+
+#### 5. Instalar dependencias y configurar
 
 ```bash
 cd backend
 npm install
-```
-
-#### 4. Configurar la base de datos
-
-```bash
-# Generar el cliente de Prisma
 npx prisma generate
-
-# Ejecutar migraciones
 npx prisma migrate dev
-
-# Cargar datos de ejemplo (30 personas, usuario admin, reglas configurables)
 npm run seed
 ```
 
@@ -93,14 +127,14 @@ npm run seed
 - Usuario: `admin`
 - Contraseña: `admin123`
 
-#### 5. Instalar dependencias del frontend
+#### 6. Frontend
 
 ```bash
 cd ../frontend
 npm install
 ```
 
-#### 6. Iniciar el servidor de desarrollo
+#### 7. Iniciar el servidor de desarrollo
 
 **Terminal 1 - Backend:**
 ```bash
@@ -122,35 +156,49 @@ Abre tu navegador en `http://localhost:5173` e inicia sesión con las credencial
 
 ## 🐳 Deployment con Docker
 
-### Desarrollo local con Docker
+### Desarrollo y Producción
+
+El mismo comando funciona para ambos entornos:
 
 ```bash
-docker compose up --build
+./start-docker.sh
+```
+
+O manualmente:
+
+```bash
+docker compose up --build -d
 ```
 
 Esto levantará:
-- PostgreSQL en puerto 5432
+- PostgreSQL (solo accesible dentro de Docker)
 - Backend en puerto 5000
 - Frontend en puerto 5005
 
 Accede a `http://localhost:5005`
 
-### Producción
+### Producción en VPS
 
-1. Configurar variables de entorno en `.env` (cambiar `JWT_SECRET`, etc.)
+1. Clonar el repositorio en el VPS
 
-2. Actualizar `DATABASE_URL` en el archivo `.env` para PostgreSQL:
-```
-DATABASE_URL="postgresql://cuadrante:cuadrante_password@db:5432/cuadrante_db?schema=public"
-```
-
-3. Ejecutar migraciones en el contenedor:
+2. Configurar variables de entorno (opcional, el script crea una por defecto):
 ```bash
-docker compose exec backend npx prisma migrate deploy
-docker compose exec backend npm run seed
+# Editar backend/.env si necesitas cambiar valores
+nano backend/.env
 ```
 
-4. El sistema estará disponible en `http://localhost:5005` (o el dominio configurado)
+3. Ejecutar el script de inicio:
+```bash
+./start-docker.sh
+```
+
+El script automáticamente:
+- Construye los contenedores
+- Configura PostgreSQL
+- Ejecuta migraciones
+- Carga datos de ejemplo
+
+4. El sistema estará disponible en `http://tu-ip:5005` o configurar un dominio con Nginx
 
 ## 📚 Uso del Sistema
 
