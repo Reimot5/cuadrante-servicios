@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL (para producción)
+  db:
+    image: postgres:15-alpine
+    container_name: cuadrante-db
+    environment:
+      POSTGRES_USER: cuadrante
+      POSTGRES_PASSWORD: cuadrante_password
+      POSTGRES_DB: cuadrante_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cuadrante-network
+
+  # Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cuadrante-backend
+    environment:
+      DATABASE_URL: postgresql://cuadrante:cuadrante_password@db:5432/cuadrante_db?schema=public
+      JWT_SECRET: ${JWT_SECRET:-production-secret-cambiar}
+      PORT: 5000
+      NODE_ENV: production
+      CORS_ORIGIN: http://localhost:5005
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - cuadrante-network
+    # Volumen comentado para producción - descomentar solo para desarrollo
+    # volumes:
+    #   - ./backend:/app
+    #   - /app/node_modules
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cuadrante-frontend
+    ports:
+      - "5005:80"
+    depends_on:
+      - backend
+    networks:
+      - cuadrante-network
+
+volumes:
+  postgres_data:
+
+networks:
+  cuadrante-network:
+    driver: bridge
+

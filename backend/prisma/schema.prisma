@@ -1,0 +1,71 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Persona {
+  id           String       @id @default(uuid())
+  nombre       String
+  grupo        String       // A o B
+  isConductor  Boolean
+  asignaciones Asignacion[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Asignacion {
+  id        String   @id @default(uuid())
+  fecha     DateTime
+  personaId String
+  persona   Persona  @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  estado    String   // G, LIC, C, PE, X, S
+  origen    String   // manual o auto
+  nota      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fecha, personaId])
+}
+
+model ReglaConfigurable {
+  id              String  @id @default(uuid())
+  estadoTrigger   String  // G, LIC, C, PE, X, S
+  diasDescanso    Int
+  estadoDescanso  String  // G, LIC, C, PE, X, S
+  prioridad       Int
+  activa          Boolean @default(true)
+  descripcion     String
+}
+
+model Periodo {
+  id           String   @id @default(uuid())
+  fechaInicio  DateTime
+  fechaFin     DateTime
+  estado       String   @default("BORRADOR") // BORRADOR o PUBLICADO
+  createdBy    String
+  createdAt    DateTime @default(now())
+  publishedAt DateTime?
+}
+
+model AuditLog {
+  id      String   @id @default(uuid())
+  usuario String
+  accion  String
+  detalle String
+  fecha   DateTime @default(now())
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  rol       String   @default("ADMIN")
+  createdAt DateTime @default(now())
+}
+
