@@ -49,21 +49,45 @@ export const autoAsignarGuardias = async (
   });
 
   // Normalizar fechas parseando desde string YYYY-MM-DD para evitar problemas de zona horaria
-  const parsearFecha = (fecha: Date | string): Date => {
+  const parsearFecha = (fecha: Date | string, esFin: boolean = false): Date => {
     const fechaStr =
       typeof fecha === "string" ? fecha : fecha.toISOString().split("T")[0];
     const [year, month, day] = fechaStr.split("-").map(Number);
+    // Si es fechaFin, usar el final del día (23:59:59.999) para asegurar que se incluya
+    if (esFin) {
+      return new Date(year, month - 1, day, 23, 59, 59, 999);
+    }
     return new Date(year, month - 1, day, 0, 0, 0, 0);
   };
 
-  const fechaInicioNormalizada = parsearFecha(fechaInicio);
-  const fechaFinNormalizada = parsearFecha(fechaFin);
-
-  // Iterar por cada día en el rango (incluyendo el último día)
-  const fechaActual = new Date(fechaInicioNormalizada);
+  const fechaInicioNormalizada = parsearFecha(fechaInicio, false);
+  const fechaFinNormalizada = parsearFecha(fechaFin, true);
 
   // Comparar usando timestamps normalizados
-  while (fechaActual.getTime() <= fechaFinNormalizada.getTime()) {
+  // Calcular el número total de días para asegurar que procesamos todos
+  // Extraer solo la parte de fecha (sin hora) para el cálculo preciso
+  // IMPORTANTE: Usar parsearFecha para fechaFin también para asegurar consistencia
+  const fechaInicioSoloFecha = parsearFecha(fechaInicio, false);
+  const fechaFinSoloFecha = parsearFecha(fechaFin, false); // Usar false para obtener inicio del día, luego sumaremos 1 al cálculo
+  const fechaInicioTime = fechaInicioSoloFecha.getTime();
+  const fechaFinTime = fechaFinSoloFecha.getTime();
+  // Calcular días: diferencia en milisegundos / milisegundos por día + 1 (para incluir ambos extremos)
+  // Usar Math.ceil para asegurar que redondee hacia arriba si hay cualquier fracción
+  const diferenciaDias =
+    (fechaFinTime - fechaInicioTime) / (1000 * 60 * 60 * 24);
+  const diasTotales = Math.ceil(diferenciaDias) + 1;
+
+  // Usar un loop basado en el número de días para asegurar que procesamos todos, incluyendo el último
+  // Calcular usando milisegundos para evitar problemas con setDate al cruzar límites de mes
+  const milisegundosPorDia = 1000 * 60 * 60 * 24;
+
+  for (let i = 0; i < diasTotales; i++) {
+    // Calcular fecha sumando milisegundos para mayor precisión
+    const fechaActual = new Date(
+      fechaInicioNormalizada.getTime() + i * milisegundosPorDia
+    );
+    const fechaStr = fechaActual.toISOString().split("T")[0];
+
     try {
       await asignarGuardiasDia(
         fechaActual,
@@ -74,14 +98,11 @@ export const autoAsignarGuardias = async (
       resultado.diasProcesados++;
     } catch (error: any) {
       resultado.errores.push({
-        fecha: fechaActual.toISOString().split("T")[0],
+        fecha: fechaStr,
         mensaje: error.message || "Error al asignar guardias",
       });
       resultado.exito = false;
     }
-
-    // Avanzar al siguiente día
-    fechaActual.setDate(fechaActual.getDate() + 1);
   }
 
   return resultado;
@@ -93,12 +114,20 @@ const asignarGuardiasDia = async (
   contadorGuardias: ContadorGuardias,
   resultado: ResultadoAutoAsignacion
 ): Promise<void> => {
-  const fechaSinHora = new Date(fecha);
-  fechaSinHora.setHours(0, 0, 0, 0);
+  // Normalizar fecha para evitar problemas de zona horaria
+  const fechaStr = fecha.toISOString().split("T")[0];
+  const [year, month, day] = fechaStr.split("-").map(Number);
+  const fechaInicioDia = new Date(year, month - 1, day, 0, 0, 0, 0);
+  const fechaFinDia = new Date(year, month - 1, day, 23, 59, 59, 999);
 
-  // Obtener asignaciones existentes para este día
+  // Obtener asignaciones existentes para este día usando rango para evitar problemas de zona horaria
   const asignacionesExistentes = await prisma.asignacion.findMany({
-    where: { fecha: fechaSinHora },
+    where: {
+      fecha: {
+        gte: fechaInicioDia,
+        lte: fechaFinDia,
+      },
+    },
     include: { persona: true },
   });
 
@@ -110,7 +139,6 @@ const asignarGuardiasDia = async (
   const guardiasNecesarias = 4 - guardiasExistentes.length;
 
   if (guardiasNecesarias <= 0) {
-    // Ya tiene las 4 guardias
     return;
   }
 
@@ -152,7 +180,7 @@ const asignarGuardiasDia = async (
   for (const persona of candidatos) {
     await prisma.asignacion.create({
       data: {
-        fecha: fechaSinHora,
+        fecha: fechaInicioDia,
         personaId: persona.id,
         estado: Estado.G,
         origen: Origen.auto,

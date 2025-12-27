@@ -1,8 +1,9 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import api from '../services/api';
 import { ResultadoAutoAsignacion } from '../types';
 import toast from 'react-hot-toast';
+import { formatDateDisplay } from '../utils/dates';
 
 interface AutoAsignarModalProps {
   isOpen: boolean;
@@ -11,15 +12,60 @@ interface AutoAsignarModalProps {
   fechaFin?: string;
 }
 
+// Convertir de YYYY-MM-DD a DD/MM/YYYY
+const formatDateToDisplay = (dateStr: string): string => {
+  if (!dateStr) return '';
+  return formatDateDisplay(dateStr);
+};
+
+// Convertir de DD/MM/YYYY a YYYY-MM-DD
+const parseDateFromDisplay = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const [day, month, year] = dateStr.split('/');
+  if (day && month && year && day.length === 2 && month.length === 2 && year.length === 4) {
+    return `${year}-${month}-${day}`;
+  }
+  return '';
+};
+
+// Validar formato DD/MM/YYYY
+const isValidDateFormat = (dateStr: string): boolean => {
+  const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  if (!regex.test(dateStr)) return false;
+  const [day, month, year] = dateStr.split('/').map(Number);
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getDate() === day &&
+    date.getMonth() === month - 1 &&
+    date.getFullYear() === year
+  );
+};
+
 export default function AutoAsignarModal({
   isOpen,
   onClose,
   fechaInicio: fechaInicioProp,
   fechaFin: fechaFinProp,
 }: AutoAsignarModalProps) {
-  const [fechaInicio, setFechaInicio] = useState(fechaInicioProp || '');
-  const [fechaFin, setFechaFin] = useState(fechaFinProp || '');
+  const [fechaInicioDisplay, setFechaInicioDisplay] = useState(
+    fechaInicioProp ? formatDateToDisplay(fechaInicioProp) : ''
+  );
+  const [fechaFinDisplay, setFechaFinDisplay] = useState(
+    fechaFinProp ? formatDateToDisplay(fechaFinProp) : ''
+  );
   const [resultado, setResultado] = useState<ResultadoAutoAsignacion | null>(null);
+
+  // Actualizar fechas cuando cambien las props o se abra el modal
+  useEffect(() => {
+    if (isOpen) {
+      if (fechaInicioProp) {
+        setFechaInicioDisplay(formatDateToDisplay(fechaInicioProp));
+      }
+      if (fechaFinProp) {
+        setFechaFinDisplay(formatDateToDisplay(fechaFinProp));
+      }
+    }
+  }, [isOpen, fechaInicioProp, fechaFinProp]);
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -42,10 +88,23 @@ export default function AutoAsignarModal({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    if (!fechaInicio || !fechaFin) {
+    if (!fechaInicioDisplay || !fechaFinDisplay) {
       toast.error('Las fechas son obligatorias');
       return;
     }
+
+    if (!isValidDateFormat(fechaInicioDisplay)) {
+      toast.error('La fecha de inicio debe tener el formato DD/MM/AAAA');
+      return;
+    }
+
+    if (!isValidDateFormat(fechaFinDisplay)) {
+      toast.error('La fecha de fin debe tener el formato DD/MM/AAAA');
+      return;
+    }
+
+    const fechaInicio = parseDateFromDisplay(fechaInicioDisplay);
+    const fechaFin = parseDateFromDisplay(fechaFinDisplay);
 
     if (new Date(fechaInicio) > new Date(fechaFin)) {
       toast.error('La fecha de inicio debe ser anterior a la fecha de fin');
@@ -88,12 +147,21 @@ export default function AutoAsignarModal({
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fecha Inicio
+                  Fecha Inicio (DD/MM/AAAA)
                 </label>
                 <input
-                  type="date"
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
+                  type="text"
+                  value={fechaInicioDisplay}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    // Permitir solo números y barras
+                    value = value.replace(/[^\d/]/g, '');
+                    // Limitar longitud
+                    if (value.length <= 10) {
+                      setFechaInicioDisplay(value);
+                    }
+                  }}
+                  placeholder="DD/MM/AAAA"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                   required
                 />
@@ -101,12 +169,21 @@ export default function AutoAsignarModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fecha Fin
+                  Fecha Fin (DD/MM/AAAA)
                 </label>
                 <input
-                  type="date"
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
+                  type="text"
+                  value={fechaFinDisplay}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    // Permitir solo números y barras
+                    value = value.replace(/[^\d/]/g, '');
+                    // Limitar longitud
+                    if (value.length <= 10) {
+                      setFechaFinDisplay(value);
+                    }
+                  }}
+                  placeholder="DD/MM/AAAA"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                   required
                 />

@@ -1,11 +1,11 @@
-import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../types';
-import { canEditPast } from '../middlewares/authMiddleware';
-import { aplicarDescansosAutomaticos } from '../services/reglasService';
-import { autoAsignarGuardias } from '../services/autoAsignadorService';
-import { validarDia, validarRango } from '../services/validadorService';
-import { Estado, Origen } from '../types';
+import { Response } from "express";
+import { PrismaClient } from "@prisma/client";
+import { AuthRequest } from "../types";
+import { canEditPast } from "../middlewares/authMiddleware";
+import { aplicarDescansosAutomaticos } from "../services/reglasService";
+import { autoAsignarGuardias } from "../services/autoAsignadorService";
+import { validarDia, validarRango } from "../services/validadorService";
+import { Estado, Origen } from "../types";
 
 const prisma = new PrismaClient();
 
@@ -16,9 +16,38 @@ export const getAsignaciones = async (req: AuthRequest, res: Response) => {
     const where: any = {};
 
     if (fechaInicio && fechaFin) {
+      // Normalizar fechas para evitar problemas de zona horaria
+      // fechaInicio: inicio del día (00:00:00)
+      const fechaInicioStr = fechaInicio as string;
+      const [yearInicio, monthInicio, dayInicio] = fechaInicioStr
+        .split("-")
+        .map(Number);
+      const fechaInicioDate = new Date(
+        yearInicio,
+        monthInicio - 1,
+        dayInicio,
+        0,
+        0,
+        0,
+        0
+      );
+
+      // fechaFin: fin del día (23:59:59.999) para incluir todo el último día
+      const fechaFinStr = fechaFin as string;
+      const [yearFin, monthFin, dayFin] = fechaFinStr.split("-").map(Number);
+      const fechaFinDate = new Date(
+        yearFin,
+        monthFin - 1,
+        dayFin,
+        23,
+        59,
+        59,
+        999
+      );
+
       where.fecha = {
-        gte: new Date(fechaInicio as string),
-        lte: new Date(fechaFin as string),
+        gte: fechaInicioDate,
+        lte: fechaFinDate,
       };
     }
 
@@ -35,7 +64,7 @@ export const getAsignaciones = async (req: AuthRequest, res: Response) => {
       include: {
         persona: true,
       },
-      orderBy: [{ fecha: 'asc' }, { persona: { nombre: 'asc' } }],
+      orderBy: [{ fecha: "asc" }, { persona: { nombre: "asc" } }],
     });
 
     // Filtrar por grupo si se especifica
@@ -46,8 +75,8 @@ export const getAsignaciones = async (req: AuthRequest, res: Response) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error al obtener asignaciones:', error);
-    res.status(500).json({ error: 'Error al obtener asignaciones' });
+    console.error("Error al obtener asignaciones:", error);
+    res.status(500).json({ error: "Error al obtener asignaciones" });
   }
 };
 
@@ -56,7 +85,9 @@ export const createAsignacion = async (req: AuthRequest, res: Response) => {
     const { fecha, personaId, estado, nota } = req.body;
 
     if (!fecha || !personaId || !estado) {
-      return res.status(400).json({ error: 'Fecha, personaId y estado son requeridos' });
+      return res
+        .status(400)
+        .json({ error: "Fecha, personaId y estado son requeridos" });
     }
 
     const fechaSinHora = new Date(fecha);
@@ -64,7 +95,9 @@ export const createAsignacion = async (req: AuthRequest, res: Response) => {
 
     // Validar que puede editar el pasado
     if (!canEditPast(req, fechaSinHora)) {
-      return res.status(403).json({ error: 'No tiene permisos para editar fechas pasadas' });
+      return res
+        .status(403)
+        .json({ error: "No tiene permisos para editar fechas pasadas" });
     }
 
     // Verificar si ya existe
@@ -81,7 +114,7 @@ export const createAsignacion = async (req: AuthRequest, res: Response) => {
 
     if (existente) {
       // Actualizar solo si no es manual o si el usuario puede sobrescribir
-      if (existente.origen === Origen.manual || req.user?.rol === 'ADMIN') {
+      if (existente.origen === Origen.manual || req.user?.rol === "ADMIN") {
         asignacion = await prisma.asignacion.update({
           where: { id: existente.id },
           data: {
@@ -92,7 +125,9 @@ export const createAsignacion = async (req: AuthRequest, res: Response) => {
           include: { persona: true },
         });
       } else {
-        return res.status(400).json({ error: 'No se puede sobrescribir asignación manual' });
+        return res
+          .status(400)
+          .json({ error: "No se puede sobrescribir asignación manual" });
       }
     } else {
       asignacion = await prisma.asignacion.create({
@@ -113,8 +148,8 @@ export const createAsignacion = async (req: AuthRequest, res: Response) => {
     // Registrar en audit log
     await prisma.auditLog.create({
       data: {
-        usuario: req.user?.username || 'sistema',
-        accion: existente ? 'UPDATE_ASIGNACION' : 'CREATE_ASIGNACION',
+        usuario: req.user?.username || "sistema",
+        accion: existente ? "UPDATE_ASIGNACION" : "CREATE_ASIGNACION",
         detalle: JSON.stringify({
           asignacionId: asignacion.id,
           fecha: fechaSinHora,
@@ -126,18 +161,21 @@ export const createAsignacion = async (req: AuthRequest, res: Response) => {
 
     res.status(existente ? 200 : 201).json(asignacion);
   } catch (error) {
-    console.error('Error al crear asignación:', error);
-    res.status(500).json({ error: 'Error al crear asignación' });
+    console.error("Error al crear asignación:", error);
+    res.status(500).json({ error: "Error al crear asignación" });
   }
 };
 
-export const createAsignacionRango = async (req: AuthRequest, res: Response) => {
+export const createAsignacionRango = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const { fechaInicio, fechaFin, personaId, estado, nota } = req.body;
 
     if (!fechaInicio || !fechaFin || !personaId || !estado) {
       return res.status(400).json({
-        error: 'fechaInicio, fechaFin, personaId y estado son requeridos',
+        error: "fechaInicio, fechaFin, personaId y estado son requeridos",
       });
     }
 
@@ -154,7 +192,9 @@ export const createAsignacionRango = async (req: AuthRequest, res: Response) => 
       // Validar permisos
       if (!canEditPast(req, fechaSinHora)) {
         return res.status(403).json({
-          error: `No tiene permisos para editar la fecha ${fechaSinHora.toISOString().split('T')[0]}`,
+          error: `No tiene permisos para editar la fecha ${
+            fechaSinHora.toISOString().split("T")[0]
+          }`,
         });
       }
 
@@ -191,8 +231,8 @@ export const createAsignacionRango = async (req: AuthRequest, res: Response) => 
     // Registrar en audit log
     await prisma.auditLog.create({
       data: {
-        usuario: req.user?.username || 'sistema',
-        accion: 'CREATE_ASIGNACION_RANGO',
+        usuario: req.user?.username || "sistema",
+        accion: "CREATE_ASIGNACION_RANGO",
         detalle: JSON.stringify({
           fechaInicio,
           fechaFin,
@@ -205,8 +245,8 @@ export const createAsignacionRango = async (req: AuthRequest, res: Response) => 
 
     res.status(201).json(asignaciones);
   } catch (error) {
-    console.error('Error al crear asignaciones en rango:', error);
-    res.status(500).json({ error: 'Error al crear asignaciones en rango' });
+    console.error("Error al crear asignaciones en rango:", error);
+    res.status(500).json({ error: "Error al crear asignaciones en rango" });
   }
 };
 
@@ -217,11 +257,13 @@ export const deleteAsignacion = async (req: AuthRequest, res: Response) => {
     const asignacion = await prisma.asignacion.findUnique({ where: { id } });
 
     if (!asignacion) {
-      return res.status(404).json({ error: 'Asignación no encontrada' });
+      return res.status(404).json({ error: "Asignación no encontrada" });
     }
 
     if (!canEditPast(req, asignacion.fecha)) {
-      return res.status(403).json({ error: 'No tiene permisos para editar fechas pasadas' });
+      return res
+        .status(403)
+        .json({ error: "No tiene permisos para editar fechas pasadas" });
     }
 
     await prisma.asignacion.delete({ where: { id } });
@@ -229,16 +271,16 @@ export const deleteAsignacion = async (req: AuthRequest, res: Response) => {
     // Registrar en audit log
     await prisma.auditLog.create({
       data: {
-        usuario: req.user?.username || 'sistema',
-        accion: 'DELETE_ASIGNACION',
+        usuario: req.user?.username || "sistema",
+        accion: "DELETE_ASIGNACION",
         detalle: JSON.stringify({ asignacionId: id }),
       },
     });
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error al eliminar asignación:', error);
-    res.status(500).json({ error: 'Error al eliminar asignación' });
+    console.error("Error al eliminar asignación:", error);
+    res.status(500).json({ error: "Error al eliminar asignación" });
   }
 };
 
@@ -247,7 +289,9 @@ export const autoAsignar = async (req: AuthRequest, res: Response) => {
     const { fechaInicio, fechaFin } = req.body;
 
     if (!fechaInicio || !fechaFin) {
-      return res.status(400).json({ error: 'fechaInicio y fechaFin son requeridos' });
+      return res
+        .status(400)
+        .json({ error: "fechaInicio y fechaFin son requeridos" });
     }
 
     const resultado = await autoAsignarGuardias(
@@ -258,16 +302,16 @@ export const autoAsignar = async (req: AuthRequest, res: Response) => {
     // Registrar en audit log
     await prisma.auditLog.create({
       data: {
-        usuario: req.user?.username || 'sistema',
-        accion: 'AUTO_ASIGNAR_GUARDIAS',
+        usuario: req.user?.username || "sistema",
+        accion: "AUTO_ASIGNAR_GUARDIAS",
         detalle: JSON.stringify(resultado),
       },
     });
 
     res.json(resultado);
   } catch (error) {
-    console.error('Error en auto-asignación:', error);
-    res.status(500).json({ error: 'Error en auto-asignación de guardias' });
+    console.error("Error en auto-asignación:", error);
+    res.status(500).json({ error: "Error en auto-asignación de guardias" });
   }
 };
 
@@ -289,11 +333,11 @@ export const validar = async (req: AuthRequest, res: Response) => {
     }
 
     return res.status(400).json({
-      error: 'Debe proporcionar fecha o fechaInicio+fechaFin',
+      error: "Debe proporcionar fecha o fechaInicio+fechaFin",
     });
   } catch (error) {
-    console.error('Error al validar:', error);
-    res.status(500).json({ error: 'Error al validar' });
+    console.error("Error al validar:", error);
+    res.status(500).json({ error: "Error al validar" });
   }
 };
 
@@ -303,7 +347,7 @@ export const permutarAsignaciones = async (req: AuthRequest, res: Response) => {
 
     if (!asignacion1Id || !asignacion2Id) {
       return res.status(400).json({
-        error: 'Se requieren asignacion1Id y asignacion2Id',
+        error: "Se requieren asignacion1Id y asignacion2Id",
       });
     }
 
@@ -318,7 +362,7 @@ export const permutarAsignaciones = async (req: AuthRequest, res: Response) => {
     });
 
     if (!asig1 || !asig2) {
-      return res.status(404).json({ error: 'Asignaciones no encontradas' });
+      return res.status(404).json({ error: "Asignaciones no encontradas" });
     }
 
     // Intercambiar personas
@@ -328,7 +372,7 @@ export const permutarAsignaciones = async (req: AuthRequest, res: Response) => {
       where: { id: asignacion1Id },
       data: {
         personaId: asig2.personaId,
-        nota: nota || 'Permuta realizada',
+        nota: nota || "Permuta realizada",
         origen: Origen.manual,
       },
     });
@@ -337,7 +381,7 @@ export const permutarAsignaciones = async (req: AuthRequest, res: Response) => {
       where: { id: asignacion2Id },
       data: {
         personaId: tempPersonaId,
-        nota: nota || 'Permuta realizada',
+        nota: nota || "Permuta realizada",
         origen: Origen.manual,
       },
     });
@@ -351,8 +395,8 @@ export const permutarAsignaciones = async (req: AuthRequest, res: Response) => {
     // Registrar en audit log
     await prisma.auditLog.create({
       data: {
-        usuario: req.user?.username || 'sistema',
-        accion: 'PERMUTA_ASIGNACIONES',
+        usuario: req.user?.username || "sistema",
+        accion: "PERMUTA_ASIGNACIONES",
         detalle: JSON.stringify({
           asignacion1Id,
           asignacion2Id,
@@ -363,12 +407,11 @@ export const permutarAsignaciones = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({
-      mensaje: 'Permuta realizada exitosamente',
+      mensaje: "Permuta realizada exitosamente",
       advertencias: errores.length > 0 ? errores : null,
     });
   } catch (error) {
-    console.error('Error al permutar:', error);
-    res.status(500).json({ error: 'Error al permutar asignaciones' });
+    console.error("Error al permutar:", error);
+    res.status(500).json({ error: "Error al permutar asignaciones" });
   }
 };
-

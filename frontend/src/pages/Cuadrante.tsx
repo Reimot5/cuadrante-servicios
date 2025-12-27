@@ -43,8 +43,10 @@ export default function Cuadrante() {
   const { data: asignaciones = [], refetch: refetchAsignaciones } = useQuery({
     queryKey: ['asignaciones', formatDate(rango.start), formatDate(rango.end)],
     queryFn: async () => {
+      const fechaInicioStr = formatDate(rango.start);
+      const fechaFinStr = formatDate(rango.end);
       const { data } = await api.get(
-        `/asignaciones?fechaInicio=${formatDate(rango.start)}&fechaFin=${formatDate(rango.end)}`
+        `/asignaciones?fechaInicio=${fechaInicioStr}&fechaFin=${fechaFinStr}`
       );
       return data as Asignacion[];
     },
