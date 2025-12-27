@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { Persona, Asignacion, Estado } from '../types';
-import { getWeekRange, getMonthRange, getDaysInRange, formatDate, formatDateHeader, formatMonthYear, formatWeekRange } from '../utils/dates';
+import { getMonthRange, getDaysInRange, formatDate, formatDateHeader, formatMonthYear } from '../utils/dates';
 import { ESTADO_COLORS, ESTADO_LABELS } from '../utils/constants';
 import AsignacionModal from '../components/AsignacionModal';
 import AsignacionRangoModal from '../components/AsignacionRangoModal';
@@ -11,7 +11,6 @@ import Leyenda from '../components/Leyenda';
 import ValidacionPanel from '../components/ValidacionPanel';
 
 export default function Cuadrante() {
-  const [vistaActual, setVistaActual] = useState<'semanal' | 'mensual'>('semanal');
   const [fechaReferencia, setFechaReferencia] = useState(new Date());
   const [filtroGrupo, setFiltroGrupo] = useState<string>('');
   const [soloConductores, setSoloConductores] = useState(false);
@@ -27,9 +26,7 @@ export default function Cuadrante() {
   const [modalAutoAsignar, setModalAutoAsignar] = useState(false);
 
   // Calcular rango de fechas
-  const rango = vistaActual === 'semanal'
-    ? getWeekRange(fechaReferencia)
-    : getMonthRange(fechaReferencia);
+  const rango = getMonthRange(fechaReferencia);
 
   const dias = getDaysInRange(rango.start, rango.end);
 
@@ -72,6 +69,13 @@ export default function Cuadrante() {
   if (soloConductores) {
     personasFiltradas = personasFiltradas.filter((p) => p.isConductor);
   }
+  
+  // Ordenar por grupo (A primero, luego B)
+  personasFiltradas = [...personasFiltradas].sort((a, b) => {
+    if (a.grupo === 'A' && b.grupo === 'B') return -1;
+    if (a.grupo === 'B' && b.grupo === 'A') return 1;
+    return 0;
+  });
 
   // Helper para obtener asignación
   const getAsignacion = (personaId: string, fecha: Date): Asignacion | undefined => {
@@ -106,27 +110,15 @@ export default function Cuadrante() {
     });
   };
 
-  const cambiarVista = (nuevaVista: 'semanal' | 'mensual') => {
-    setVistaActual(nuevaVista);
-  };
-
   const avanzarPeriodo = () => {
     const nuevaFecha = new Date(fechaReferencia);
-    if (vistaActual === 'semanal') {
-      nuevaFecha.setDate(nuevaFecha.getDate() + 7);
-    } else {
-      nuevaFecha.setMonth(nuevaFecha.getMonth() + 1);
-    }
+    nuevaFecha.setMonth(nuevaFecha.getMonth() + 1);
     setFechaReferencia(nuevaFecha);
   };
 
   const retrocederPeriodo = () => {
     const nuevaFecha = new Date(fechaReferencia);
-    if (vistaActual === 'semanal') {
-      nuevaFecha.setDate(nuevaFecha.getDate() - 7);
-    } else {
-      nuevaFecha.setMonth(nuevaFecha.getMonth() - 1);
-    }
+    nuevaFecha.setMonth(nuevaFecha.getMonth() - 1);
     setFechaReferencia(nuevaFecha);
   };
 
@@ -139,35 +131,11 @@ export default function Cuadrante() {
       {/* Controles superiores */}
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="mb-4">
-          <h2 className={`text-2xl font-bold text-gray-800 ${vistaActual === 'mensual' ? 'text-center' : ''}`}>
-            {vistaActual === 'semanal' 
-              ? formatWeekRange(rango.start, rango.end)
-              : formatMonthYear(fechaReferencia)}
+          <h2 className="text-2xl font-bold text-gray-800 text-center">
+            {formatMonthYear(fechaReferencia)}
           </h2>
         </div>
         <div className="flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex gap-2">
-            <button
-              onClick={() => cambiarVista('semanal')}
-              className={`px-4 py-2 rounded-md ${
-                vistaActual === 'semanal'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Semanal
-            </button>
-            <button
-              onClick={() => cambiarVista('mensual')}
-              className={`px-4 py-2 rounded-md ${
-                vistaActual === 'mensual'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Mensual
-            </button>
-          </div>
 
           <div className="flex gap-2 items-center">
             <button
@@ -195,7 +163,7 @@ export default function Cuadrante() {
               onClick={() => setModalRango(true)}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
             >
-              Asignar por Rango
+              Cambios por NEJ
             </button>
             <button
               onClick={() => setModalAutoAsignar(true)}
@@ -253,7 +221,7 @@ export default function Cuadrante() {
         <table className="min-w-full border-collapse">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
-              <th className={`${vistaActual === 'semanal' ? 'px-2 py-3 max-w-[120px]' : 'px-4 py-3'} text-left text-sm font-medium text-gray-700 border-b-2 sticky left-0 bg-gray-50 z-10`}>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b-2 sticky left-0 bg-gray-50 z-10">
                 Persona
               </th>
               {dias.map((dia) => (
@@ -277,9 +245,19 @@ export default function Cuadrante() {
             </tr>
           </thead>
           <tbody className="bg-white">
-            {personasFiltradas.map((persona) => (
-              <tr key={persona.id} className="hover:bg-gray-50">
-                <td className={`${vistaActual === 'semanal' ? 'px-2 py-2 max-w-[120px] text-xs' : 'px-4 py-2 text-sm'} font-medium text-gray-900 border-b sticky left-0 bg-white z-10 truncate`}>
+            {personasFiltradas.map((persona, index) => {
+              // Detectar si es la primera persona del Grupo B (después del Grupo A)
+              const esPrimeraDelGrupoB = 
+                persona.grupo === 'B' && 
+                index > 0 && 
+                personasFiltradas[index - 1].grupo === 'A';
+              
+              return (
+              <tr 
+                key={persona.id} 
+                className={`hover:bg-gray-50 ${esPrimeraDelGrupoB ? 'border-t-4 border-gray-400' : ''}`}
+              >
+                <td className="px-4 py-2 text-sm font-medium text-gray-900 border-b sticky left-0 bg-white z-10 truncate">
                   {persona.nombre}
                   {persona.isConductor && (
                     <span className="ml-1 text-blue-600">(C)</span>
@@ -331,10 +309,11 @@ export default function Cuadrante() {
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
             {/* Fila de totales por día */}
             <tr className="bg-blue-50 font-bold">
-              <td className={`${vistaActual === 'semanal' ? 'px-2 py-2 max-w-[120px] text-xs' : 'px-4 py-2 text-sm'} text-gray-900 border-b-2 border-t-2 sticky left-0 bg-blue-50 z-10`}>
+              <td className="px-4 py-2 text-sm text-gray-900 border-b-2 border-t-2 sticky left-0 bg-blue-50 z-10">
                 Total Guardias
               </td>
               {dias.map((dia) => {

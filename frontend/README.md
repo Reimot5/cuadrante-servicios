@@ -75,7 +75,7 @@ Los archivos optimizados se generarán en la carpeta `dist/`.
 - Interceptor de axios para agregar token automáticamente
 
 ### Cuadrante
-- Vista semanal y mensual
+- Vista mensual
 - Navegación entre períodos
 - Filtros por grupo y conductor
 - Asignación manual por celda

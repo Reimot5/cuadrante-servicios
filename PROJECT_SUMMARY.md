@@ -45,7 +45,6 @@ Todos los requisitos del MVP han sido implementados exitosamente.
 
 ### ✅ 5. Cuadrante (Frontend)
 - [x] Vista por rango de fechas configurable
-- [x] Vista semanal
 - [x] Vista mensual
 - [x] Grilla persona × día
 - [x] Filtros por grupo (A/B)

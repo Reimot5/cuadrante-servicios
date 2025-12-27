@@ -11,7 +11,7 @@ Sistema completo para la gestión de cuadrantes de servicios con auto-asignació
 ## 📋 Características Principales
 
 - ✅ Gestión completa de personas (Grupo A y B, conductores/no conductores)
-- ✅ Cuadrante visual interactivo (vistas semanal y mensual)
+- ✅ Cuadrante visual interactivo (vista mensual)
 - ✅ Auto-asignación inteligente de guardias con balanceo de carga
 - ✅ Reglas duras configurables (4 guardias/día, mínimo 1 Grupo A, mínimo 1 conductor)
 - ✅ Descansos automáticos después de Comisiones y Semanas
@@ -214,8 +214,7 @@ El script automáticamente:
 
 ### Cuadrante
 
-#### Vistas
-- **Semanal**: Muestra 7 días (lunes a domingo)
+#### Vista
 - **Mensual**: Muestra todos los días del mes
 
 #### Filtros

@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export const formatDate = (date: Date | string): string => {
@@ -19,19 +19,6 @@ export const formatMonthYear = (date: Date | string): string => {
   const formatted = format(new Date(date), "MMMM 'de' yyyy", { locale: es });
   // Capitalizar primera letra del mes
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-};
-
-export const formatWeekRange = (start: Date, end: Date): string => {
-  const startFormatted = format(new Date(start), 'dd/MM/yyyy', { locale: es });
-  const endFormatted = format(new Date(end), 'dd/MM/yyyy', { locale: es });
-  return `${startFormatted} - ${endFormatted}`;
-};
-
-export const getWeekRange = (date: Date = new Date()) => {
-  return {
-    start: startOfWeek(date, { weekStartsOn: 1 }),
-    end: endOfWeek(date, { weekStartsOn: 1 }),
-  };
 };
 
 export const getMonthRange = (date: Date = new Date()) => {

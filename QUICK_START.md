@@ -105,7 +105,7 @@ El seed automáticamente carga:
 ## Próximos Pasos
 
 1. **Explora el Cuadrante**
-   - Vista semanal y mensual
+   - Vista mensual
    - Filtros por grupo y conductores
    - Click en celdas para asignar estados
 
