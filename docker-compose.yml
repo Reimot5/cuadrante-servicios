@@ -15,6 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - cuadrante-network
+    restart: unless-stopped
 
   # Backend
   backend:
@@ -34,6 +35,7 @@ services:
       - db
     networks:
       - cuadrante-network
+    restart: unless-stopped
     # Volumen comentado para producción - descomentar solo para desarrollo
     # volumes:
     #   - ./backend:/app
@@ -51,6 +53,7 @@ services:
       - backend
     networks:
       - cuadrante-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
